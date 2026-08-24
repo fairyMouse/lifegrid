@@ -184,6 +184,28 @@
   background: #365299;
 }
 
+.lg-calendar .lg-cal-event {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 22px;
+  color: #fff;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lg-calendar .lg-cal-event.is-done {
+  text-decoration: line-through;
+}
+
+.lg-calendar.is-event-dragging .fc-more-popover {
+  pointer-events: none !important;
+  opacity: 0;
+}
+
 .lg-calendar .fc-event-main {
   padding: 0;
 }

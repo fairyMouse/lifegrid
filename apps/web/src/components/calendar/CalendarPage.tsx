@@ -2,8 +2,8 @@
 
 import { formatMonthTitle, formatWeekTitle, todayKey } from "@lifegrid/domain";
 import type { Task } from "@lifegrid/types";
-import { useSearchParams } from "next/navigation";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CalendarToolbar } from "./CalendarToolbar";
 import {
   MonthCalendar,
@@ -12,7 +12,7 @@ import {
 import { TaskCreatePopover } from "./TaskCreatePopover";
 import { TaskEditor } from "@/components/task/TaskEditor";
 import { useTaskMutations, useTasks } from "@/hooks/use-tasks";
-import type { CalendarView } from "./types";
+import { calendarViewFromParam, type CalendarView } from "./types";
 
 type CreateState = {
   dateKey: string;
@@ -20,14 +20,16 @@ type CreateState = {
 };
 
 export function CalendarPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: tasks = [] } = useTasks();
   const mutations = useTaskMutations();
   const calendarRef = useRef<MonthCalendarHandle>(null);
   const [rangeStart, setRangeStart] = useState(new Date());
   const [rangeEnd, setRangeEnd] = useState(new Date());
-  const [view, setView] = useState<CalendarView>(
-    searchParams.get("view") === "week" ? "week" : "month",
+  const [view, setView] = useState<CalendarView>(() =>
+    calendarViewFromParam(searchParams.get("view")),
   );
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(todayKey());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -40,10 +42,24 @@ export function CalendarPage() {
     () => false,
   );
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
+  const urlView = calendarViewFromParam(searchParams.get("view"));
+
+  useEffect(() => {
+    setView(urlView);
+  }, [urlView]);
 
   function showError(message: string) {
     setError(message);
     window.setTimeout(() => setError(null), 2400);
+  }
+
+  function changeView(next: CalendarView) {
+    setView(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "week") params.set("view", "week");
+    else params.delete("view");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
   function openCreate(dateKey: string, anchor: DOMRect) {
@@ -61,6 +77,10 @@ export function CalendarPage() {
         dueAt: dateKey,
         isAllDay: true,
         priority,
+      })
+      .then((task) => {
+        setSelectedDateKey(dateKey);
+        setSelectedTaskId(task.id);
       })
       .catch(() => showError("创建任务失败"));
   }
@@ -90,7 +110,7 @@ export function CalendarPage() {
       <CalendarToolbar
         title={title}
         view={view}
-        onViewChange={setView}
+        onViewChange={changeView}
         onPrev={() => calendarRef.current?.prev()}
         onNext={() => calendarRef.current?.next()}
         onToday={() => calendarRef.current?.today()}

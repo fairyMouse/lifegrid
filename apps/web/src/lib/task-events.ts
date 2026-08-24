@@ -1,7 +1,7 @@
 import { exclusiveEndKey, parseDueAt, toDateKey } from "@lifegrid/domain";
 import { PRIORITY_COLOR } from "@lifegrid/ui";
 import type { Task } from "@lifegrid/types";
-import type { EventInput } from "@fullcalendar/core";
+import type { EventApi, EventInput } from "@fullcalendar/core";
 
 export function taskToEvent(task: Task): EventInput | null {
   if (!task.dueAt) return null;
@@ -35,4 +35,13 @@ export function tasksToEvents(tasks: Task[]): EventInput[] {
   return tasks
     .map(taskToEvent)
     .filter((event): event is EventInput => event !== null);
+}
+
+export function compareCalendarEvents(a: unknown, b: unknown): number {
+  const left = (a as EventApi).extendedProps.task as Task | undefined;
+  const right = (b as EventApi).extendedProps.task as Task | undefined;
+  if (!left || !right) return 0;
+  const created = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  if (created !== 0) return created;
+  return left.sortOrder - right.sortOrder;
 }

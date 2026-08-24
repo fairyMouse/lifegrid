@@ -27,7 +27,14 @@ export function useTaskMutations() {
 
   const create = useMutation({
     mutationFn: (input: CreateTaskInput) => createTask(input),
-    onSuccess: invalidate,
+    onSuccess: (task) => {
+      queryClient.setQueryData<Task[]>(KEY, (current) => {
+        if (!current) return [task];
+        if (current.some((item) => item.id === task.id)) return current;
+        return [...current, task];
+      });
+      void invalidate();
+    },
   });
 
   const update = useMutation({

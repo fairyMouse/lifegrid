@@ -24,8 +24,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { CalendarTask } from "./CalendarTask";
-import { tasksToEvents } from "@/lib/task-events";
+import { compareCalendarEvents, tasksToEvents } from "@/lib/task-events";
 import { fcViewName, type CalendarView } from "./types";
 import { cn } from "@/lib/utils";
 import "./calendar.css";
@@ -57,6 +56,14 @@ const STREAM_MONTHS = 16;
 const IDLE_MS = 720;
 const WEEK_WHEEL = 90;
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function monthFromWeek(keys: string[]): Date | null {
   if (keys.length === 0) return null;
   const dates = keys.map(parseDueAt);
@@ -82,6 +89,40 @@ function readVisibleMonth(root: HTMLElement): Date | null {
   return null;
 }
 
+function eventInnerHtml(task: Task): { html: string } {
+  const title = escapeHtml(task.title);
+  const done = task.status === "completed";
+  return {
+    html: `<div class="lg-cal-event${done ? " is-done" : ""}">${done ? `✓ ${title}` : title}</div>`,
+  };
+}
+
+function dayHeaderHtml(date: Date, isWeek: boolean): { html: string } {
+  const weekday = WEEKDAYS[date.getDay()] ?? "";
+  if (!isWeek) return { html: weekday };
+  const today = toDateKey(date) === todayKey() ? " is-today" : "";
+  return {
+    html: `<div class="lg-week-header"><span>${weekday}</span><span class="lg-day-num${today}">${date.getDate()}</span></div>`,
+  };
+}
+
+function dayCellHtml(date: Date, isWeek: boolean): { html: string } {
+  const dateKey = toDateKey(date);
+  const holiday = holidayLabel(dateKey);
+  const holidayHtml = holiday
+    ? `<span class="lg-holiday">${escapeHtml(holiday)}</span>`
+    : "";
+  if (isWeek) return { html: holidayHtml || "<span></span>" };
+  const week =
+    date.getDay() === 0
+      ? `<span class="lg-week">${escapeHtml(weekNumberLabel(date))}</span>`
+      : "";
+  const today = dateKey === todayKey() ? " is-today" : "";
+  return {
+    html: `<div class="lg-day-cell"><div class="lg-day-left">${week}<span class="lg-day-num${today}">${date.getDate()}</span></div>${holidayHtml}</div>`,
+  };
+}
+
 export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
   function MonthCalendar(
     {
@@ -104,10 +145,11 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
     const visibleRef = useRef(new Date());
     const programmaticRef = useRef(false);
     const onVisibleMonthRef = useRef(onVisibleMonth);
+    const onRangeChangeRef = useRef(onRangeChange);
     const onUserScrollRef = useRef(onUserScroll);
     const idleTimer = useRef(0);
     const didInit = useRef(false);
-    const initQueued = useRef(false);
+    const draggingRef = useRef(false);
     const [hint, setHint] = useState<string | null>(null);
     const [hintOn, setHintOn] = useState(false);
     const events = useMemo(() => tasksToEvents(tasks), [tasks]);
@@ -115,12 +157,14 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
       () => startOfMonth(subMonths(new Date(), STREAM_BACK)),
       [],
     );
+    const isWeek = view === "week";
 
     useEffect(() => {
       viewRef.current = view;
       onVisibleMonthRef.current = onVisibleMonth;
+      onRangeChangeRef.current = onRangeChange;
       onUserScrollRef.current = onUserScroll;
-    }, [view, onVisibleMonth, onUserScroll]);
+    }, [view, onVisibleMonth, onRangeChange, onUserScroll]);
 
     function showHint(date: Date) {
       setHint(formatMonthTitle(date));
@@ -130,6 +174,15 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
     function hideHint() {
       setHintOn(false);
       window.setTimeout(() => setHint(null), 200);
+    }
+
+    function setDragging(on: boolean) {
+      draggingRef.current = on;
+      scrollRef.current?.classList.toggle("is-event-dragging", on);
+      document.querySelectorAll<HTMLElement>(".fc-more-popover").forEach((node) => {
+        node.style.pointerEvents = on ? "none" : "";
+        node.style.opacity = on ? "0" : "";
+      });
     }
 
     function scrollToDate(dateKey: string, behavior: ScrollBehavior) {
@@ -203,19 +256,34 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
     }));
 
     useEffect(() => {
-      const api = calendarRef.current?.getApi();
-      if (!api) return;
-      const next = fcViewName(view);
-      if (api.view.type === next) return;
-      if (next === "monthStream") {
-        api.changeView(next, streamStart);
-        requestAnimationFrame(() =>
-          scrollToDate(toDateKey(startOfMonth(visibleRef.current)), "auto"),
-        );
-      } else {
-        api.changeView(next, visibleRef.current);
+      function fromPopoverEvent(event: Event): boolean {
+        const target = event.target as HTMLElement | null;
+        return Boolean(target?.closest(".fc-more-popover .fc-event"));
       }
-    }, [view, streamStart]);
+
+      function onDown(event: Event) {
+        if (fromPopoverEvent(event)) setDragging(true);
+      }
+
+      function onUp() {
+        window.requestAnimationFrame(() => {
+          if (draggingRef.current) setDragging(false);
+        });
+      }
+
+      document.addEventListener("pointerdown", onDown, true);
+      document.addEventListener("mousedown", onDown, true);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("mouseup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      return () => {
+        document.removeEventListener("pointerdown", onDown, true);
+        document.removeEventListener("mousedown", onDown, true);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("mouseup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+    }, []);
 
     useEffect(() => {
       if (view !== "month") return;
@@ -323,10 +391,11 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
           ref={scrollRef}
           className={cn(
             "lg-calendar h-full",
-            view === "week" ? "lg-calendar-week overflow-hidden" : "lg-calendar-stream",
+            isWeek ? "lg-calendar-week overflow-hidden" : "lg-calendar-stream",
           )}
         >
           <FullCalendar
+            key={view}
             ref={calendarRef}
             plugins={[dayGridPlugin, interactionPlugin]}
             views={{
@@ -336,29 +405,38 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
               },
             }}
             initialView={fcViewName(view)}
-            initialDate={view === "month" ? streamStart : undefined}
+            initialDate={isWeek ? visibleRef.current : streamStart}
             locale={zhCnLocale}
             firstDay={0}
             headerToolbar={false}
-            height={view === "week" ? "100%" : "auto"}
-            contentHeight={view === "week" ? undefined : "auto"}
+            height={isWeek ? "100%" : "auto"}
+            contentHeight={isWeek ? undefined : "auto"}
             fixedWeekCount={false}
             navLinks={false}
-            dayMaxEvents={view === "week" ? 16 : 4}
+            dayMaxEvents={isWeek ? 16 : 4}
             displayEventTime={false}
             editable
             eventStartEditable
             eventDurationEditable={false}
+            eventOrder={compareCalendarEvents}
             events={events}
             datesSet={(arg) => {
               if (arg.view.type === "dayGridWeek") {
                 visibleRef.current = arg.view.currentStart;
-                onRangeChange(arg.view.currentStart, arg.view.currentEnd);
+                didInit.current = true;
+                const start = arg.view.currentStart;
+                const end = arg.view.currentEnd;
+                queueMicrotask(() => onRangeChangeRef.current(start, end));
                 return;
               }
-              if (initQueued.current) return;
-              initQueued.current = true;
-              requestAnimationFrame(() => scrollToDate(todayKey(), "auto"));
+              requestAnimationFrame(() =>
+                scrollToDate(
+                  didInit.current
+                    ? toDateKey(startOfMonth(visibleRef.current))
+                    : todayKey(),
+                  "auto",
+                ),
+              );
             }}
             dateClick={(arg: DateClickArg) =>
               onSelectDate(toDateKey(arg.date), arg.dayEl)
@@ -368,48 +446,20 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
               const task = arg.event.extendedProps.task as Task | undefined;
               if (task) onSelectTask(task);
             }}
+            eventDragStart={() => setDragging(true)}
+            eventDragStop={() => setDragging(false)}
             eventDrop={handleDrop}
-            dayHeaderContent={(arg) => {
-              const weekday = WEEKDAYS[arg.date.getDay()] ?? "";
-              if (view !== "week") return weekday;
-              return (
-                <div className="lg-week-header">
-                  <span>{weekday}</span>
-                  <span className={arg.isToday ? "lg-day-num is-today" : "lg-day-num"}>
-                    {arg.date.getDate()}
-                  </span>
-                </div>
-              );
-            }}
+            dayHeaderContent={(arg) => dayHeaderHtml(arg.date, isWeek)}
             dayCellClassNames={(arg) =>
               selectedDateKey === toDateKey(arg.date) ? ["is-selected"] : []
             }
-            dayCellContent={(arg) => {
-              const dateKey = toDateKey(arg.date);
-              const holiday = holidayLabel(dateKey);
-              if (view === "week") {
-                return holiday ? <span className="lg-holiday">{holiday}</span> : <span />;
-              }
-              return (
-                <div className="lg-day-cell">
-                  <div className="lg-day-left">
-                    {arg.date.getDay() === 0 ? (
-                      <span className="lg-week">{weekNumberLabel(arg.date)}</span>
-                    ) : null}
-                    <span className={arg.isToday ? "lg-day-num is-today" : "lg-day-num"}>
-                      {arg.date.getDate()}
-                    </span>
-                  </div>
-                  {holiday ? <span className="lg-holiday">{holiday}</span> : null}
-                </div>
-              );
-            }}
+            dayCellContent={(arg) => dayCellHtml(arg.date, isWeek)}
             eventContent={(arg) => {
               const task = arg.event.extendedProps.task as Task | undefined;
               if (!task) return arg.event.title;
-              return <CalendarTask task={task} />;
+              return eventInnerHtml(task);
             }}
-            moreLinkContent={(arg) => `+${arg.num}`}
+            moreLinkContent={(arg) => ({ html: `+${arg.num}` })}
           />
         </div>
         {hint ? (
