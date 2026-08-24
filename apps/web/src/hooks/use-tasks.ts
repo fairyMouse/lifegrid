@@ -9,6 +9,7 @@ import {
 } from "@lifegrid/api";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@lifegrid/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { playCompleteSound } from "@/lib/sounds";
 
 const KEY = ["tasks"] as const;
 
@@ -54,6 +55,7 @@ export function useTaskMutations() {
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
       completeTask(id, completed),
     onMutate: async ({ id, completed }) => {
+      if (completed) playCompleteSound();
       await queryClient.cancelQueries({ queryKey: KEY });
       const previous = queryClient.getQueryData<Task[]>(KEY);
       queryClient.setQueryData<Task[]>(KEY, (current) =>

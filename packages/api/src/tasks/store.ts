@@ -1,7 +1,7 @@
 import type { Task } from "@lifegrid/types";
 import { SEED_TASKS } from "./seed";
 
-const STORAGE_KEY = "lifegrid.tasks.v2";
+const STORAGE_KEY = "lifegrid.tasks.v4";
 
 let memory: Task[] | null = null;
 

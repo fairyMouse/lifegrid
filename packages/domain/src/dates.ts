@@ -32,6 +32,16 @@ export function formatMonthTitle(date: Date): string {
   return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
 }
 
+export function formatWeekTitle(start: Date, endExclusive: Date): string {
+  const end = addDays(endExclusive, -1);
+  const startText = `${start.getMonth() + 1}月${start.getDate()}日`;
+  const endText = `${end.getMonth() + 1}月${end.getDate()}日`;
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${start.getFullYear()}年${startText} – ${end.getFullYear()}年${endText}`;
+  }
+  return `${start.getFullYear()}年 ${startText} – ${endText}`;
+}
+
 export function weekdayLabel(date: Date): string {
   return format(date, "EEE", { locale: zhCN });
 }
@@ -56,12 +66,12 @@ export function formatTaskDateLabel(dateKey: string, now = new Date()): string {
   const md = format(date, "M月d日");
   const weekday = format(date, "EEEE", { locale: zhCN }).replace("星期", "周");
 
-  if (diff === 0) return `今天, ${md}`;
-  if (diff === 1) return `明天, ${md}`;
-  if (diff === -1) return `昨天, ${md}`;
-  if (diff >= 2 && diff < 7) return `${weekday}, ${md}`;
-  if (diff >= 7 && diff < 14) return `下${weekday}, ${md}`;
-  return `${weekday}, ${md}`;
+  if (diff === 0) return `今天，${md}`;
+  if (diff === 1) return `明天，${md}`;
+  if (diff === -1) return `昨天，${md}`;
+  if (diff >= 2 && diff < 7) return `${weekday}，${md}`;
+  if (diff >= 7 && diff < 14) return `下${weekday}，${md}`;
+  return `${weekday}，${md}`;
 }
 
 export function addCalendarDays(dateKey: string, amount: number): string {

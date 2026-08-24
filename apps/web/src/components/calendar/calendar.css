@@ -61,6 +61,43 @@
   min-height: 100%;
 }
 
+.lg-calendar-stream {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.lg-calendar-stream .fc,
+.lg-calendar-stream .fc-view-harness,
+.lg-calendar-stream .fc-view-harness-active,
+.lg-calendar-stream .fc-daygrid,
+.lg-calendar-stream .fc-scrollgrid {
+  height: auto !important;
+}
+
+.lg-calendar-stream .fc-view-harness {
+  position: relative !important;
+}
+
+.lg-calendar-stream .fc-daygrid-body,
+.lg-calendar-stream .fc-daygrid-body table,
+.lg-calendar-stream .fc-scrollgrid-sync-table {
+  height: auto !important;
+}
+
+.lg-calendar-stream .fc-daygrid-day-frame {
+  min-height: 108px;
+}
+
+.lg-calendar-stream .fc-scrollgrid-section-header > th,
+.lg-calendar-stream .fc-col-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #151515;
+}
+
 .lg-calendar .fc-daygrid-day-top {
   flex-direction: row;
   justify-content: flex-start;
@@ -116,6 +153,26 @@
   white-space: nowrap;
 }
 
+.lg-calendar .lg-week-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 2px;
+}
+
+.lg-calendar-week .fc-col-header-cell {
+  height: auto;
+}
+
+.lg-calendar-week .fc-col-header-cell-cushion {
+  padding: 8px 0 10px;
+}
+
+.lg-calendar-week .lg-holiday {
+  padding: 4px 6px 0;
+}
+
 .lg-calendar .fc-daygrid-event-harness {
   margin: 0 4px 2px;
 }
@@ -163,4 +220,42 @@
   color: rgba(255, 255, 255, 0.35);
   opacity: 0;
   pointer-events: none;
+}
+
+@keyframes lg-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lg-create-pop {
+  animation: lg-pop 140ms ease-out;
+}
+
+.lg-scroll-hint {
+  position: absolute;
+  left: 14px;
+  top: 42%;
+  z-index: 20;
+  pointer-events: none;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.lg-scroll-hint.is-on {
+  opacity: 1;
+  transform: translateY(0);
 }

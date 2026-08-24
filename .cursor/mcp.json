@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "/Users/hanfei/.nvm/versions/node/v20.19.4/bin/npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {
+        "PATH": "/Users/hanfei/.nvm/versions/node/v20.19.4/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "npm_config_prefix": "/Users/hanfei/.nvm/versions/node/v20.19.4",
+        "NPM_CONFIG_PREFIX": "/Users/hanfei/.nvm/versions/node/v20.19.4"
+      }
+    }
+  }
+}

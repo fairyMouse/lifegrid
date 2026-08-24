@@ -1,34 +1,37 @@
 "use client";
 
-import { formatMonthTitle, todayKey } from "@lifegrid/domain";
+import { formatMonthTitle, formatWeekTitle, todayKey } from "@lifegrid/domain";
 import type { Task } from "@lifegrid/types";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { CalendarToolbar } from "./CalendarToolbar";
 import {
   MonthCalendar,
   type MonthCalendarHandle,
 } from "./MonthCalendar";
-import { TaskQuickCreate } from "./TaskQuickCreate";
+import { TaskCreatePopover } from "./TaskCreatePopover";
 import { TaskEditor } from "@/components/task/TaskEditor";
 import { useTaskMutations, useTasks } from "@/hooks/use-tasks";
+import type { CalendarView } from "./types";
 
-type QuickCreate = {
+type CreateState = {
   dateKey: string;
-  top: number;
-  left: number;
-  width: number;
+  anchor: DOMRect;
 };
 
 export function CalendarPage() {
+  const searchParams = useSearchParams();
   const { data: tasks = [] } = useTasks();
   const mutations = useTaskMutations();
   const calendarRef = useRef<MonthCalendarHandle>(null);
-  const [month, setMonth] = useState(new Date());
-  const [view, setView] = useState<"month" | "week" | "day" | "agenda">("month");
+  const [rangeStart, setRangeStart] = useState(new Date());
+  const [rangeEnd, setRangeEnd] = useState(new Date());
+  const [view, setView] = useState<CalendarView>(
+    searchParams.get("view") === "week" ? "week" : "month",
+  );
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(todayKey());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [quickCreate, setQuickCreate] = useState<QuickCreate | null>(null);
+  const [create, setCreate] = useState<CreateState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mounted = useSyncExternalStore(
@@ -37,16 +40,29 @@ export function CalendarPage() {
     () => false,
   );
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
-  const showEditor = Boolean(selectedTask || creating);
 
   function showError(message: string) {
     setError(message);
     window.setTimeout(() => setError(null), 2400);
   }
 
-  function closeEditor() {
+  function openCreate(dateKey: string, anchor: DOMRect) {
+    setSelectedDateKey(dateKey);
     setSelectedTaskId(null);
-    setCreating(false);
+    setCreate({ dateKey, anchor });
+  }
+
+  function submitCreate(title: string, priority: Task["priority"]) {
+    const dateKey = create?.dateKey ?? selectedDateKey ?? todayKey();
+    setCreate(null);
+    void mutations.create
+      .mutateAsync({
+        title,
+        dueAt: dateKey,
+        isAllDay: true,
+        priority,
+      })
+      .catch(() => showError("创建任务失败"));
   }
 
   async function handleCreate(input: {
@@ -55,96 +71,80 @@ export function CalendarPage() {
     dueAt: string | null;
     priority: Task["priority"];
   }) {
-    const task = await mutations.create.mutateAsync({
+    return mutations.create.mutateAsync({
       title: input.title,
       description: input.description || null,
       dueAt: input.dueAt,
       priority: input.priority,
       isAllDay: true,
     });
-    setSelectedTaskId(task.id);
-    setCreating(false);
-    return task;
   }
+
+  const title =
+    view === "week"
+      ? formatWeekTitle(rangeStart, rangeEnd)
+      : formatMonthTitle(rangeStart);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <CalendarToolbar
-        title={formatMonthTitle(month)}
+        title={title}
         view={view}
         onViewChange={setView}
         onPrev={() => calendarRef.current?.prev()}
         onNext={() => calendarRef.current?.next()}
         onToday={() => calendarRef.current?.today()}
-        onCreate={() => {
-          setQuickCreate(null);
-          setSelectedTaskId(null);
-          setCreating(true);
-        }}
+        onCreate={(anchor) => openCreate(selectedDateKey ?? todayKey(), anchor)}
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {mounted ? (
-        <MonthCalendar
-          ref={calendarRef}
-          tasks={tasks}
-          selectedDateKey={selectedDateKey}
-          onMonthChange={setMonth}
-          onSelectDate={(dateKey, dayEl) => {
-            setSelectedDateKey(dateKey);
-            setSelectedTaskId(null);
-            setCreating(false);
-            const rect = dayEl.getBoundingClientRect();
-            setQuickCreate({
-              dateKey,
-              top: rect.bottom - 32,
-              left: rect.left + 4,
-              width: Math.max(rect.width - 8, 120),
-            });
-          }}
-          onSelectTask={(task) => {
-            setQuickCreate(null);
-            setCreating(false);
-            setSelectedTaskId(task.id);
-            if (task.dueAt) setSelectedDateKey(task.dueAt.slice(0, 10));
-          }}
-          onMoveTask={async (id, startAt, dueAt) => {
-            await mutations.update.mutateAsync({
-              id,
-              patch: { startAt, dueAt },
-            });
-          }}
-          onMoveError={showError}
-        />
+          <MonthCalendar
+            ref={calendarRef}
+            tasks={tasks}
+            view={view}
+            selectedDateKey={selectedDateKey}
+            onRangeChange={(start, end) => {
+              setRangeStart(start);
+              setRangeEnd(end);
+            }}
+            onVisibleMonth={(date) => setRangeStart(date)}
+            onUserScroll={() => setCreate(null)}
+            onSelectDate={(dateKey, dayEl) => {
+              openCreate(dateKey, dayEl.getBoundingClientRect());
+            }}
+            onSelectTask={(task) => {
+              setCreate(null);
+              setSelectedTaskId(task.id);
+              if (task.dueAt) setSelectedDateKey(task.dueAt.slice(0, 10));
+            }}
+            onMoveTask={async (id, startAt, dueAt) => {
+              await mutations.update.mutateAsync({
+                id,
+                patch: { startAt, dueAt },
+              });
+            }}
+            onMoveError={showError}
+          />
         ) : null}
       </div>
 
-      {quickCreate ? (
-        <TaskQuickCreate
-          dateKey={quickCreate.dateKey}
-          top={quickCreate.top}
-          left={quickCreate.left}
-          width={quickCreate.width}
-          onCancel={() => setQuickCreate(null)}
-          onSubmit={(title) => {
-            void mutations.create
-              .mutateAsync({
-                title,
-                dueAt: quickCreate.dateKey,
-                isAllDay: true,
-              })
-              .catch(() => showError("创建任务失败"));
-            setQuickCreate(null);
-          }}
+      {create ? (
+        <TaskCreatePopover
+          key={`${create.dateKey}-${Math.round(create.anchor.top)}-${Math.round(create.anchor.left)}`}
+          dateKey={create.dateKey}
+          anchor={create.anchor}
+          onCancel={() => setCreate(null)}
+          onSubmit={submitCreate}
         />
       ) : null}
 
-      {showEditor ? (
+      {selectedTask ? (
         <TaskEditor
-          key={selectedTask?.id ?? `new-${selectedDateKey ?? "today"}`}
+          key={selectedTask.id}
           task={selectedTask}
-          createDueAt={selectedDateKey ?? todayKey()}
-          onClose={closeEditor}
+          createDueAt={selectedTask.dueAt ?? todayKey()}
+          onClose={() => setSelectedTaskId(null)}
           onCreate={handleCreate}
           onUpdate={(id, patch) => mutations.update.mutateAsync({ id, patch })}
           onComplete={(id, completed) =>

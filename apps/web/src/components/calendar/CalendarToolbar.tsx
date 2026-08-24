@@ -4,8 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Plus } from "lu
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-type CalendarView = "month" | "week" | "day" | "agenda";
+import type { CalendarView } from "./types";
 
 type Props = {
   title: string;
@@ -14,14 +13,12 @@ type Props = {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  onCreate: () => void;
+  onCreate: (anchor: DOMRect) => void;
 };
 
-const VIEWS: { id: CalendarView; label: string; enabled: boolean }[] = [
-  { id: "month", label: "月", enabled: true },
-  { id: "week", label: "周", enabled: false },
-  { id: "day", label: "日", enabled: false },
-  { id: "agenda", label: "列表", enabled: false },
+const VIEWS: { id: CalendarView; label: string }[] = [
+  { id: "month", label: "月" },
+  { id: "week", label: "周" },
 ];
 
 export function CalendarToolbar({
@@ -35,13 +32,19 @@ export function CalendarToolbar({
 }: Props) {
   const [open, setOpen] = useState(false);
   const current = VIEWS.find((item) => item.id === view)?.label ?? "月";
+  const stepLabel = view === "week" ? "周" : "月";
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between px-4">
       <h1 className="text-[15px] font-medium tracking-wide">{title}</h1>
 
       <div className="flex items-center gap-1.5">
-        <Button variant="ghost" size="icon" onClick={onCreate} title="新建任务">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(event) => onCreate(event.currentTarget.getBoundingClientRect())}
+          title="新建任务"
+        >
           <Plus size={16} />
         </Button>
 
@@ -55,13 +58,12 @@ export function CalendarToolbar({
               {VIEWS.map((item) => (
                 <button
                   key={item.id}
-                  disabled={!item.enabled}
                   onClick={() => {
                     onViewChange(item.id);
                     setOpen(false);
                   }}
                   className={cn(
-                    "block w-full px-3 py-1.5 text-left text-sm text-white/80 hover:bg-white/8 disabled:text-white/25",
+                    "block w-full px-3 py-1.5 text-left text-sm text-white/80 hover:bg-white/8",
                     item.id === view && "text-white",
                   )}
                 >
@@ -72,13 +74,13 @@ export function CalendarToolbar({
           ) : null}
         </div>
 
-        <Button variant="outline" size="icon" onClick={onPrev} title="上一月">
+        <Button variant="outline" size="icon" onClick={onPrev} title={`上一${stepLabel}`}>
           <ChevronLeft size={16} />
         </Button>
         <Button variant="outline" onClick={onToday}>
           今天
         </Button>
-        <Button variant="outline" size="icon" onClick={onNext} title="下一月">
+        <Button variant="outline" size="icon" onClick={onNext} title={`下一${stepLabel}`}>
           <ChevronRight size={16} />
         </Button>
         <Button variant="ghost" size="icon" title="更多">
