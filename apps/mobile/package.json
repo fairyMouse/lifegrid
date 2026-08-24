@@ -1,0 +1,15 @@
+{
+  "name": "@lifegrid/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "start": "node -e \"console.log('Mobile is a skeleton. Use Expo when starting the iOS/Android app.')\""
+  },
+  "dependencies": {
+    "@lifegrid/api": "workspace:*",
+    "@lifegrid/domain": "workspace:*",
+    "@lifegrid/types": "workspace:*"
+  }
+}

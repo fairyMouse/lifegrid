@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Lifegrid",
+    "slug": "lifegrid",
+    "scheme": "lifegrid",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"]
+  }
+}

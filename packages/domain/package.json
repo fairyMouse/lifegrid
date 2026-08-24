@@ -1,0 +1,16 @@
+{
+  "name": "@lifegrid/domain",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lifegrid/types": "workspace:*",
+    "date-fns": "^4.1.0"
+  }
+}
