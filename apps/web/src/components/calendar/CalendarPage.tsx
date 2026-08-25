@@ -51,6 +51,7 @@ export function CalendarPage() {
   const [selectedDateKey, setSelectedDateKey] = useState(dateKey);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [create, setCreate] = useState<CreateState | null>(null);
+  const skipDateClick = useRef(false);
   const [contextMenu, setContextMenu] = useState<{
     taskId: string;
     x: number;
@@ -205,6 +206,10 @@ export function CalendarPage() {
             }
             onUserScroll={() => setCreate(null)}
             onSelectDate={(nextDate, dayEl) => {
+              if (skipDateClick.current) {
+                skipDateClick.current = false;
+                return;
+              }
               openCreate(nextDate, dayEl.getBoundingClientRect());
             }}
             onSelectTask={(task) => {
@@ -259,6 +264,12 @@ export function CalendarPage() {
           anchor={create.anchor}
           onCancel={() => setCreate(null)}
           onSubmit={submitCreate}
+          onSuppressDateClick={() => {
+            skipDateClick.current = true;
+            window.setTimeout(() => {
+              skipDateClick.current = false;
+            }, 500);
+          }}
         />
       ) : null}
 

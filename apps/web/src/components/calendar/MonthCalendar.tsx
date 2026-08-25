@@ -535,9 +535,10 @@ export const MonthCalendar = forwardRef<MonthCalendarHandle, Props>(
                 scrollToDate(focusRef.current, "auto"),
               );
             }}
-            dateClick={(arg: DateClickArg) =>
-              onSelectDate(toDateKey(arg.date), arg.dayEl)
-            }
+            dateClick={(arg: DateClickArg) => {
+              if (arg.jsEvent.defaultPrevented) return;
+              onSelectDate(toDateKey(arg.date), arg.dayEl);
+            }}
             eventClick={(arg: EventClickArg) => {
               arg.jsEvent.preventDefault();
               if (arg.jsEvent.button !== 0) return;

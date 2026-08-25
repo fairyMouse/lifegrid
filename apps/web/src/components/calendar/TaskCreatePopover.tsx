@@ -16,13 +16,21 @@ type Props = {
   anchor: DOMRect;
   onSubmit: (title: string, priority: TaskPriority) => void;
   onCancel: () => void;
+  onSuppressDateClick?: () => void;
 };
 
-export function TaskCreatePopover({ dateKey, anchor, onSubmit, onCancel }: Props) {
+export function TaskCreatePopover({
+  dateKey,
+  anchor,
+  onSubmit,
+  onCancel,
+  onSuppressDateClick,
+}: Props) {
   const rootRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const onSubmitRef = useRef(onSubmit);
   const onCancelRef = useRef(onCancel);
+  const onSuppressDateClickRef = useRef(onSuppressDateClick);
   const [priority, setPriority] = useState<TaskPriority>("none");
   const [priorityOpen, setPriorityOpen] = useState(false);
   const pos = placePopover(anchor, POPUP_W, POPUP_H);
@@ -30,7 +38,8 @@ export function TaskCreatePopover({ dateKey, anchor, onSubmit, onCancel }: Props
   useEffect(() => {
     onSubmitRef.current = onSubmit;
     onCancelRef.current = onCancel;
-  }, [onSubmit, onCancel]);
+    onSuppressDateClickRef.current = onSuppressDateClick;
+  }, [onSubmit, onCancel, onSuppressDateClick]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -41,8 +50,29 @@ export function TaskCreatePopover({ dateKey, anchor, onSubmit, onCancel }: Props
       if (event.key === "Escape") onCancelRef.current();
     }
     function onPointer(event: PointerEvent) {
-      const node = event.target as Node | null;
-      if (node && rootRef.current?.contains(node)) return;
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target && rootRef.current?.contains(target)) return;
+
+      const hitCalendar = Boolean(
+        target?.closest(".lg-calendar, .fc-more-popover"),
+      );
+      if (hitCalendar) {
+        event.preventDefault();
+        event.stopPropagation();
+        onSuppressDateClickRef.current?.();
+        const swallow = (next: Event) => {
+          next.preventDefault();
+          next.stopPropagation();
+        };
+        window.addEventListener("click", swallow, true);
+        window.addEventListener("mouseup", swallow, true);
+        window.setTimeout(() => {
+          window.removeEventListener("click", swallow, true);
+          window.removeEventListener("mouseup", swallow, true);
+        }, 500);
+      }
+
       const title = inputRef.current?.value.trim() ?? "";
       if (title) onSubmitRef.current(title, priority);
       else onCancelRef.current();
