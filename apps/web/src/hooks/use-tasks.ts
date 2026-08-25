@@ -5,6 +5,7 @@ import {
   createTask,
   deleteTask,
   getTasks,
+  omitUndefined,
   updateTask,
 } from "@lifegrid/api";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@lifegrid/types";
@@ -46,7 +47,7 @@ export function useTaskMutations() {
       queryClient.setQueryData<Task[]>(KEY, (current) =>
         current?.map((task) =>
           task.id === id
-            ? { ...task, ...patch, updatedAt: new Date().toISOString() }
+            ? { ...task, ...omitUndefined(patch), updatedAt: new Date().toISOString() }
             : task,
         ),
       );

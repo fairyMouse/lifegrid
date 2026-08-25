@@ -188,17 +188,41 @@
   display: flex;
   height: 22px;
   align-items: center;
+  gap: 4px;
   overflow: hidden;
-  padding: 0 6px;
+  padding: 0 5px 0 3px;
   font-size: 12px;
   line-height: 22px;
   color: #fff;
+}
+
+.lg-calendar .lg-cal-check {
+  box-sizing: border-box;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.lg-calendar .lg-cal-check.is-on {
+  border-color: #93c5fd;
+  background: #3b82f6;
+}
+
+.lg-calendar .lg-cal-title {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.lg-calendar .lg-cal-event.is-done {
-  text-decoration: line-through;
+.lg-calendar .lg-cal-event.is-done .lg-cal-title {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .lg-calendar.is-event-dragging .fc-more-popover {
@@ -211,7 +235,7 @@
 }
 
 .lg-calendar .lg-task-done {
-  opacity: 0.45;
+  opacity: 0.72;
 }
 
 .lg-calendar .fc-daygrid-more-link {

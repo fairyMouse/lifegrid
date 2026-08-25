@@ -92,7 +92,7 @@ export function TaskEditor({
     if (patch.title !== undefined && !nextTitle) return;
     await onUpdate(createdId.current, {
       ...patch,
-      title: patch.title !== undefined ? nextTitle : undefined,
+      ...(patch.title !== undefined ? { title: nextTitle } : {}),
     });
   }
 

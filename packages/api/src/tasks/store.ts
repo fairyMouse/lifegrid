@@ -9,8 +9,15 @@ function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+function normalizeTask(task: Task): Task {
+  return {
+    ...task,
+    title: typeof task.title === "string" ? task.title : "",
+  };
+}
+
 function clone(tasks: Task[]): Task[] {
-  return tasks.map((task) => ({ ...task }));
+  return tasks.map((task) => normalizeTask(task));
 }
 
 export function loadTasks(): Task[] {
